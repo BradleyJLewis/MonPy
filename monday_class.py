@@ -11,7 +11,7 @@ item = ""          # Monday.com item ID (row ID)
 columnValue = ""   # Value to set in a column
 column = ""        # Column ID to modify
 board = ""         # Board ID
-apiKey = ""        # Monday.com API key
+apiKey = ""        # Monday.com API key (If you do not include this in your code, you will be prompted to enter it. It can be stored in a json file via the boardGen function)
 apiUrl = ""        # Monday.com API endpoint
 headers = ""       # HTTP headers for API requests
 query = ""         # GraphQL query string
@@ -20,23 +20,19 @@ query = ""         # GraphQL query string
 # GRAPHQL QUERIES AND MUTATIONS
 # ============================================================================
 
-# QUERY: Get board items sorted by ID in descending order
-# Purpose: Retrieves all items from a board, ordered by item ID (newest first)
+# QUERY: Get board items sorted by ID in descending order. Retrieves all items from a board, ordered by item ID (newest first)
 # Returns: Items with their ID, name, and all column values
 querySortByID = f'{{ boards(ids: [{board}]) {{ items_page(limit: 500, query_params:  {{ order_by: [ {{column_id:"item_id__1", direction: desc}} ] }} ) {{ cursor items {{ id name column_values {{ text value column {{ title }} }} }} }} }} }}'
 
-# MUTATION: Update a simple column value
-# Purpose: Changes the value of a specific column for a specific item
-# Parameters: item_id (row), board_id, column_id, new_value
-mutateColumn = f'mutation {{ change_simple_column_value(item_id: {item}, board_id: {board}, column_id: {column}, value: "{columnValue}") {{ id }} }}'
-
-# QUERY: Get board columns information
-# Purpose: Retrieves all columns from a board with their IDs and titles
+# QUERY Columns: Get board columns informationRetrieves all columns from a board with their IDs and titles
 # Returns: Column IDs and titles for mapping Excel columns to Monday.com columns
 queryColumns = f'{{ boards(ids: {board}) {{ columns {{ id title }} }} }}'
 
-# MUTATION: Create a new item (row) in a board
-# Purpose: Adds a new row to the Monday.com board
+# MUTATE COLUMN: Update a simple column value. Changes the value of a specific column for a specific item
+# Parameters: item_id (row), board_id, column_id, new_value
+mutateColumn = f'mutation {{ change_simple_column_value(item_id: {item}, board_id: {board}, column_id: {column}, value: "{columnValue}") {{ id }} }}'
+
+# MUTATE ITEM: Create a new item (row) in a board. Adds a new row to the Monday.com board
 # Parameters: board_id, item_name, column_values (dict of column_id: value pairs)
 createItemMutation = '''
 mutation ($boardId: ID!, $itemName: String!, $columnValues: JSON!) {
@@ -75,10 +71,7 @@ def mondayQuery(apiKey, apiUrl, headers, board, query):
 def importBoardColumns(apiKey, apiUrl, headers, board):
     """
     Creates a dictionary mapping column titles to their IDs and indices
-    
-    This function is crucial for mapping Excel column headers to Monday.com columns.
-    It retrieves all columns from a board and creates a lookup dictionary.
-    
+
     Args:
         apiKey (str): Monday.com API key
         apiUrl (str): Monday.com API endpoint
@@ -88,12 +81,6 @@ def importBoardColumns(apiKey, apiUrl, headers, board):
     Returns:
         dict: Dictionary with column titles as keys and {'id': column_id, 'index': position} as values
         
-    Example return:
-        {
-            'Name': {'id': 'name', 'index': -1},
-            'Status': {'id': 'status', 'index': 0},
-            'Priority': {'id': 'priority', 'index': 1}
-        }
     """
     columns = mondayQuery(apiKey, apiUrl, headers, board, f'{{ boards(ids: {board}) {{ columns {{ id title }} }} }}')
     columns = columns.json()
@@ -200,10 +187,6 @@ def boardGen(name, boardID=None, apiKey=None, fileName='boards.json'):
 class Board:
     """
     Monday.com Board class for managing board operations
-    
-    This class provides a high-level interface for working with Monday.com boards.
-    It handles authentication, column mapping, and provides methods for common
-    operations like creating items and updating column values.
     
     Attributes:
         name (str): Human-readable board name
